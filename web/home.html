@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media Exporter for Signal</title>
+<style>
+:root{--bg:#0d0d0d;--ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;--line:#2c2c2a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:48px 16px 64px}
+h1{font-size:20px;font-weight:600;margin:0}
+.sub{color:var(--muted);margin:2px 0 28px}
+a{color:inherit}
+#search{margin-bottom:32px}
+#search input{width:100%;font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:8px 0}
+#search input:focus{outline:none;border-bottom-color:var(--ink-2)}
+h2{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px}
+section{margin-bottom:32px}
+.rows a,.rows div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--line);text-decoration:none}
+.rows a:hover span:first-child{text-decoration:underline}
+.rows .n{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.rows .hint{color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:2px}
+.strip a{display:block;text-decoration:none}
+.strip img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#1a1a19}
+.strip span{display:block;font-size:12px;color:var(--muted);padding:3px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:var(--muted)}
+footer{color:var(--muted);font-size:13px}
+</style></head>
+<body><main>
+<h1>Media Exporter for Signal</h1>
+<p class="sub" id="sub">Loading…</p>
+
+<form id="search"><input id="q" type="search" placeholder="Search photos" aria-label="Search photos" autofocus></form>
+
+<section>
+  <h2>Archive</h2>
+  <div class="rows">
+    <a href="viewer.html?all=1&type=photo"><span>Photos</span><span class="n" id="photos">–</span></a>
+    <a href="viewer.html?all=1&type=video"><span>Videos</span><span class="n" id="videos">–</span></a>
+    <a href="viewer.html?all=1&type=shot"><span>Screenshots</span><span class="n" id="shots">–</span></a>
+    <a href="chat.html"><span>Chats</span><span class="n" id="chats">–</span></a>
+    <a href="viewer.html?people=1"><span>People</span><span class="n" id="people">–</span></a>
+  </div>
+</section>
+
+<section>
+  <h2>Triage</h2>
+  <div class="rows">
+    <a href="viewer.html?all=1&type=photo&review=todo"><span>To review</span><span class="n" id="todo">–</span></a>
+    <a href="viewer.html?all=1&type=all&review=keep"><span>Kept</span><span class="n" id="kept">–</span></a>
+    <a href="viewer.html?all=1&type=all&review=skip"><span>Skipped</span><span class="n" id="skipped">–</span></a>
+    <div><span>Sent to Photos</span><span class="n" id="sent">–</span></div>
+  </div>
+</section>
+
+<section>
+  <h2 id="otdTitle">On this day</h2>
+  <div class="strip" id="otd"></div>
+</section>
+
+<footer><a href="dashboard.html">Storage dashboard</a></footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const n = x => x.toLocaleString();
+fetch('api/search?q=').then(r => { if (!r.ok) $('search').hidden = true; }).catch(() => {}); // needs `npm run clip`
+$('search').onsubmit = e => { e.preventDefault(); const q = $('q').value.trim(); if (q) location.href = 'viewer.html?q=' + encodeURIComponent(q); };
+
+fetch('api/home').then(r => r.json()).then(h => {
+  $('sub').textContent = 'Backed up to ' + new Date(h.latest).toLocaleDateString(undefined, { dateStyle: 'long' }) + ', ' + n(h.messages) + ' messages';
+  const photos = h.photos - h.screenshots; // screenshots are counted separately, as in the viewer
+  $('photos').textContent = n(photos);
+  $('videos').textContent = n(h.videos);
+  $('shots').textContent = n(h.screenshots);
+  $('chats').textContent = n(h.chats);
+  $('people').textContent = h.named ? n(h.named) + ' named of ' + n(h.people) : n(h.people);
+  $('todo').textContent = n(Math.max(0, photos - h.kept - h.skipped));
+  $('kept').textContent = n(h.kept);
+  $('skipped').textContent = n(h.skipped);
+  $('sent').textContent = n(h.exported);
+
+  const today = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+  $('otdTitle').textContent = 'On this day, ' + today;
+  $('otd').innerHTML = h.onThisDay.length ? h.onThisDay.map(p =>
+    '<a href="viewer.html?hash=' + p.h + '&chat=' + encodeURIComponent(p.chat) + '" title="' + esc(p.sender + ', ' + p.chat) + '">' +
+    '<img loading="lazy" src="archive/.thumbs/' + p.h + '.webp" alt=""><span>' + new Date(p.ms).getFullYear() + (p.video ? ', video' : '') + '</span></a>').join('')
+    : '<p class="empty">Nothing from this date in earlier years.</p>';
+}).catch(err => { $('sub').textContent = 'Could not load: ' + err.message; });
+</script>
+</body></html>

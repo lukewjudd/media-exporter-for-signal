@@ -1,0 +1,20 @@
+# Your data: never commit these
+.env
+backup/
+archive/
+signal.duckdb
+
+# Generated
+viewer.html
+dashboard.html
+tools/statusbar
+*.tmp
+
+# Downloads and tooling
+node_modules/
+.models/
+.DS_Store
+
+# Demo (built by npm run demo:build)
+demo/data/
+demo/cache/

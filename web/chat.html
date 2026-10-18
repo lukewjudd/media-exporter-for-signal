@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signal Chats</title>
+<style>
+:root{--bg:#0d0d0d;--panel:#1a1a19;--ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;--line:#2c2c2a;--accent:#3987e5;
+  --out:#2c6bed;--in:#262624;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+#app{display:flex;height:100%}
+#side{width:300px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#side input{margin:12px;font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+#chats{overflow-y:auto;flex:1}
+.chat{padding:9px 14px;cursor:pointer;border-left:3px solid transparent}
+.chat:hover{background:var(--panel)}.chat.on{background:var(--panel);border-left-color:var(--accent)}
+.chat b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat span{font-size:12px;color:var(--muted)}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#top{height:56px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line)}
+#top h1{font-size:16px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top .sub{color:var(--muted);font-size:12px;white-space:nowrap}
+#top .grow{flex:1}
+button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover,.btnlink:hover{border-color:var(--muted)}
+.btnlink{font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none;white-space:nowrap}
+.embed #home{display:none}
+#scroll{flex:1;overflow-y:auto;overflow-anchor:none;padding:12px 0 24px}
+#list{max-width:820px;margin:0 auto;padding:0 16px}
+.edge{text-align:center;color:var(--muted);font-size:12px;padding:10px}
+.day{text-align:center;margin:18px 0 8px}
+.day span{font-size:12px;color:var(--ink-2);background:var(--panel);padding:3px 10px;border-radius:99px}
+.msg{display:flex;flex-direction:column;align-items:flex-start;margin-top:2px}
+.msg.first{margin-top:10px}
+.msg.out{align-items:flex-end}
+.who{font-size:12px;font-weight:600;margin:0 0 2px 12px}
+.bubble{max-width:min(520px,78%);background:var(--in);border-radius:18px;padding:7px 12px;overflow:hidden;position:relative}
+.msg.out .bubble{background:var(--out);color:#fff}
+.bubble.media{padding:3px}
+.bubble.media .text{padding:4px 9px 5px}
+.text{white-space:pre-wrap;overflow-wrap:anywhere}
+.text a{color:inherit;text-decoration:underline}
+.time{font-size:11px;color:var(--muted);margin:2px 12px 0}
+.msg.out .time{text-align:right}
+.atts{display:grid;gap:3px}
+.atts.multi{grid-template-columns:1fr 1fr}
+.att{position:relative;display:block;border-radius:15px;overflow:hidden;background:#000;cursor:pointer}
+.att img{display:block;width:100%;height:100%;object-fit:cover}
+.atts:not(.multi) .att{max-width:100%}
+.atts.multi .att{aspect-ratio:1}
+.att .play{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
+.att video{display:block;max-width:100%;max-height:440px}
+.cap{padding:4px 9px 3px}
+.file{display:flex;gap:8px;align-items:center;padding:8px 10px;color:inherit;text-decoration:none}
+.file small{color:var(--muted)}.msg.out .file small{color:rgba(255,255,255,.75)}
+.gone{padding:14px;font-size:13px;color:var(--muted);font-style:italic}
+audio{display:block;max-width:100%;margin:4px}
+.msg.flash .bubble,.att.flash{animation:flash 2.2s ease-out}
+@keyframes flash{0%,30%{box-shadow:0 0 0 3px #fab219}100%{box-shadow:0 0 0 3px transparent}}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;place-items:center;z-index:9;cursor:zoom-out}
+#lightbox.open{display:grid}
+#lightbox img{max-width:96vw;max-height:96vh;object-fit:contain}
+.embed #side{display:none}
+@media(max-width:720px){#side{display:none}}
+</style></head>
+<body>
+<div id="app">
+  <aside id="side"><input id="filter" type="search" placeholder="Find a chat…" aria-label="Find a chat"><div id="chats"></div></aside>
+  <main id="main">
+    <div id="top"><a id="home" href="./" class="btnlink" title="Home">⌂ Home</a><button id="close" hidden title="Back to photos (Esc)">← Photos</button><h1 id="title">Chats</h1><span class="sub" id="sub"></span><span class="grow"></span><button id="latest">Jump to latest</button></div>
+    <div id="scroll"><div id="list"></div></div>
+  </main>
+</div>
+<div id="lightbox"><img alt=""></div>
+<script>
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const embedded = params.has('embed');
+if (embedded) { document.body.classList.add('embed'); $('close').hidden = false; }
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const linkify = s => esc(s).replace(/https?:\/\/[^\s<]+/g, u => '<a href="' + u + '" target="_blank" rel="noopener">' + u + '</a>');
+const thumbPath = (h, size) => 'archive/.thumbs/' + (size === 'm' ? 'm/' : '') + h + '.webp';
+const href = p => p.split('/').map(encodeURIComponent).join('/');
+const fmtTime = ms => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+const fmtDay = ms => new Date(ms).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtSize = b => b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
+const api = path => fetch(path).then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || r.statusText); return j; }));
+// A stable colour per sender name in group chats
+const COLORS = ['#e87ba4', '#eda100', '#1baf7a', '#9085e9', '#eb6834', '#5598e7', '#e66767', '#0ca30c'];
+const colorFor = name => { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) | 0; return COLORS[Math.abs(h) % COLORS.length]; };
+
+// ----- chat list -----
+let chats = [];
+async function loadChats() {
+  chats = (await api('api/chats')).chats;
+  renderChats();
+}
+function renderChats() {
+  const f = $('filter').value.trim().toLowerCase();
+  $('chats').innerHTML = chats.filter(c => !f || c.name.toLowerCase().includes(f)).map(c =>
+    '<div class="chat' + (c.id === win.chat ? ' on' : '') + '" data-id="' + c.id + '"><b>' + esc(c.name) + '</b><span>' +
+    c.n.toLocaleString() + ' messages · ' + new Date(c.last).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '</span></div>').join('');
+}
+$('filter').oninput = renderChats;
+$('chats').onclick = e => { const el = e.target.closest('.chat'); if (el) openChat(Number(el.dataset.id)); };
+
+// ----- message window -----
+// Only a window of the conversation is ever loaded; scrolling near either end
+// fetches the next page and drops pages far behind, keeping the DOM small.
+const PAGE = 80, MAX = 400, EDGE = 1200;
+const win = { chat: null, msgs: [], hasOlder: false, hasNewer: false, loading: false };
+const scroller = $('scroll'), list = $('list');
+
+async function openChat(id, around, hash) {
+  const c = chats.find(x => x.id === id);
+  win.chat = id;
+  $('title').textContent = c ? c.name : 'Chat';
+  $('sub').textContent = c ? c.n.toLocaleString() + ' messages' : '';
+  renderChats();
+  history.replaceState(null, '', '?' + new URLSearchParams({ ...(embedded ? { embed: 1 } : {}), chat: id, ...(around ? { m: around } : {}) }));
+  const r = await api('api/messages?chat=' + id + '&limit=' + PAGE + (around ? '&around=' + around : ''));
+  Object.assign(win, { msgs: r.messages, hasOlder: r.hasOlder, hasNewer: r.hasNewer });
+  render(null);
+  // Centre on the photo itself when given (a message can hold many), else the message
+  const msg = around && list.querySelector('[data-id="' + around + '"]');
+  const target = (msg && hash && msg.querySelector('.att[data-h="' + hash + '"]')) || msg;
+  if (target) {
+    const box = target.getBoundingClientRect(), view = scroller.getBoundingClientRect();
+    scroller.scrollTop += box.top - view.top - (view.height - Math.min(box.height, view.height)) / 2;
+    target.classList.add('flash');
+  } else scroller.scrollTop = scroller.scrollHeight;
+}
+
+// Keep whatever message is at the top of the screen in the same place across re-renders
+function topAnchor() {
+  const top = scroller.getBoundingClientRect().top;
+  for (const el of list.children) {
+    if (el.dataset.id && el.getBoundingClientRect().bottom > top) return { id: el.dataset.id, offset: el.getBoundingClientRect().top - top };
+  }
+  return null;
+}
+function render(anchor) {
+  const isGroup = chats.find(c => c.id === win.chat)?.kind === 'group';
+  let html = win.hasOlder ? '<div class="edge">Loading earlier messages…</div>' : '<div class="edge">Start of the conversation</div>';
+  let prev = null;
+  for (const m of win.msgs) {
+    const day = new Date(m.ms).toDateString();
+    if (!prev || new Date(prev.ms).toDateString() !== day) { html += '<div class="day"><span>' + fmtDay(m.ms) + '</span></div>'; prev = null; }
+    const first = !prev || prev.sender !== m.sender || m.ms - prev.ms > 5 * 60e3;
+    html += renderMsg(m, first, isGroup);
+    prev = m;
+  }
+  if (win.hasNewer) html += '<div class="edge">Loading later messages…</div>';
+  list.innerHTML = html;
+  if (anchor) {
+    const el = list.querySelector('[data-id="' + anchor.id + '"]');
+    if (el) scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - anchor.offset;
+  }
+}
+function renderMsg(m, first, isGroup) {
+  const media = m.att.filter(a => /^(image|video)\//.test(a.ct));
+  const other = m.att.filter(a => !/^(image|video)\//.test(a.ct));
+  let inner = '';
+  if (media.length) {
+    inner += '<div class="atts' + (media.length > 1 ? ' multi' : '') + '">' + media.map(a => {
+      if (!a.p) return '<div class="gone">Not in archive</div>';
+      // Reserve the image's real shape (fit within 360x440) so loading it never shifts the scroll position
+      let style = '';
+      if (media.length === 1) {
+        const [w, h] = a.dims || [360, 360];
+        const scale = Math.min(1, 360 / w, 440 / h);
+        style = 'aspect-ratio:' + w + '/' + h + ';width:' + Math.round(w * scale) + 'px';
+      }
+      return '<span class="att" data-h="' + a.h + '" data-p="' + esc(a.p) + '" data-ct="' + esc(a.ct) + '" style="' + style + '">' +
+        '<img loading="lazy" decoding="async" src="' + thumbPath(a.h, 'm') + '" alt="">' + (a.ct.startsWith('video/') ? '<span class="play">▶</span>' : '') + '</span>';
+    }).join('') + '</div>';
+    if (media.some(a => a.cap)) inner += '<div class="cap">' + media.filter(a => a.cap).map(a => linkify(a.cap)).join('<br>') + '</div>';
+  }
+  for (const a of other) {
+    if (!a.p) { inner += '<div class="gone">' + esc(a.name || 'Attachment') + ' not in archive</div>'; continue; }
+    if (a.ct.startsWith('audio/')) inner += '<audio controls preload="none" src="' + href(a.p) + '"></audio>';
+    else inner += '<a class="file" href="' + href(a.p) + '" target="_blank">📄 <span>' + esc(a.name || a.p.split('/').pop()) + '<br><small>' + fmtSize(a.size) + '</small></span></a>';
+  }
+  if (m.body) inner += '<div class="text">' + linkify(m.body) + '</div>';
+  return '<div class="msg' + (m.out ? ' out' : '') + (first ? ' first' : '') + '" data-id="' + m.id + '">' +
+    (first && isGroup && !m.out ? '<div class="who" style="color:' + colorFor(m.sender) + '">' + esc(m.sender) + '</div>' : '') +
+    '<div class="bubble' + (media.length ? ' media' : '') + '">' + inner + '</div>' +
+    (first ? '<div class="time">' + fmtTime(m.ms) + '</div>' : '') + '</div>';
+}
+
+async function loadOlder() {
+  if (win.loading || !win.hasOlder) return;
+  win.loading = true;
+  try {
+    const f = win.msgs[0];
+    const r = await api('api/messages?chat=' + win.chat + '&limit=' + PAGE + '&before=' + f.ms + ':' + f.id);
+    const anchor = topAnchor();
+    win.msgs = [...r.messages, ...win.msgs];
+    win.hasOlder = r.hasOlder;
+    if (win.msgs.length > MAX) { win.msgs = win.msgs.slice(0, MAX); win.hasNewer = true; } // drop the far end
+    render(anchor);
+  } finally { win.loading = false; }
+}
+async function loadNewer() {
+  if (win.loading || !win.hasNewer) return;
+  win.loading = true;
+  try {
+    const l = win.msgs[win.msgs.length - 1];
+    const r = await api('api/messages?chat=' + win.chat + '&limit=' + PAGE + '&after=' + l.ms + ':' + l.id);
+    const anchor = topAnchor();
+    win.msgs = [...win.msgs, ...r.messages];
+    win.hasNewer = r.hasNewer;
+    if (win.msgs.length > MAX) { win.msgs = win.msgs.slice(win.msgs.length - MAX); win.hasOlder = true; }
+    render(anchor);
+  } finally { win.loading = false; }
+}
+scroller.addEventListener('scroll', () => {
+  if (scroller.scrollTop < EDGE) loadOlder();
+  else if (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < EDGE) loadNewer();
+}, { passive: true });
+$('latest').onclick = () => openChat(win.chat);
+
+// ----- media -----
+list.addEventListener('click', e => {
+  const a = e.target.closest('.att');
+  if (!a) return;
+  if (embedded) return parent.postMessage({ type: 'open', hash: a.dataset.h, chat: $('title').textContent }, location.origin);
+  if (a.dataset.ct.startsWith('video/')) {
+    a.innerHTML = '<video controls autoplay playsinline src="' + href(a.dataset.p) + '"></video>';
+    a.style.aspectRatio = ''; a.style.width = '';
+  } else {
+    $('lightbox').querySelector('img').src = href(a.dataset.p);
+    $('lightbox').classList.add('open');
+  }
+});
+$('lightbox').onclick = () => $('lightbox').classList.remove('open');
+const closeEmbed = () => parent.postMessage({ type: 'close' }, location.origin);
+$('close').onclick = closeEmbed;
+addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if ($('lightbox').classList.contains('open')) $('lightbox').classList.remove('open');
+  else if (embedded) closeEmbed();
+});
+// The photo viewer can point this frame at another message without reloading it
+addEventListener('message', e => {
+  if (e.origin === location.origin && e.data?.type === 'goto') goto(e.data.hash, e.data.chat);
+});
+async function goto(hash, chatName) {
+  const ctx = await api('api/context?hash=' + hash + '&chat=' + encodeURIComponent(chatName || ''));
+  if (ctx) await openChat(ctx.chat, ctx.message, hash);
+}
+
+// ----- start -----
+(async () => {
+  await loadChats();
+  if (params.get('hash')) await goto(params.get('hash'), params.get('chatName'));
+  else if (params.get('chat')) await openChat(Number(params.get('chat')), params.get('m') ? Number(params.get('m')) : undefined);
+  else if (chats.length) await openChat(chats[0].id);
+})().catch(err => { list.innerHTML = '<div class="edge">' + esc(err.message) + '</div>'; });
+</script>
+</body></html>

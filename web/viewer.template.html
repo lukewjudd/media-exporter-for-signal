@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signal Photos</title>
+<style>
+:root{--bg:#0d0d0d;--panel:#1a1a19;--ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;--line:#2c2c2a;--accent:#3987e5;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+header{min-height:52px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 16px;white-space:nowrap;border-bottom:1px solid var(--line);background:var(--bg)}
+#homeBtn{flex:none;color:var(--ink);text-decoration:none;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel)}
+#homeBtn:hover{border-color:var(--muted)}
+header h1{font-size:15px;margin:0 8px 0 0;white-space:nowrap}
+select,button{flex:none;white-space:nowrap;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+select{flex:0 1 auto;min-width:0;max-width:min(320px,40vw)}
+button{cursor:pointer}button:hover{border-color:var(--muted)}
+.seg{flex:none;display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--ink-2)}
+.seg button.on{background:var(--panel);color:var(--ink)}
+.count{color:var(--muted);font-size:12px;white-space:nowrap}
+.keys{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
+kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink-2)}
+@media(max-width:1300px){.keys{display:none}}
+@media(max-width:1000px){header h1{display:none}}
+@media(max-width:720px){.count{display:none}header h1{display:none}}
+
+#grid{position:absolute;inset:var(--hdr,52px) 0 0 0;overflow-y:auto;overscroll-behavior:contain}
+#spacer{position:relative;margin:0 16px}
+.row{position:absolute;left:0;right:0;display:flex;gap:2px}
+.month{position:absolute;left:0;right:0;display:flex;align-items:flex-end;padding-bottom:8px;font-weight:600;font-size:15px}
+.month span{color:var(--muted);font-weight:400;font-size:12px;margin-left:8px}
+.tile{position:relative;flex:none;background:var(--panel);cursor:pointer;overflow:hidden}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile.sel{outline:2px solid var(--accent);outline-offset:-2px;z-index:1}
+.tile .badge{position:absolute;right:6px;bottom:6px;font-size:11px;background:rgba(0,0,0,.6);border-radius:4px;padding:1px 5px}
+#q{flex:0 1 220px;min-width:120px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+#q:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.tile.kept::before{content:'✓';position:absolute;left:6px;top:6px;z-index:1;width:22px;height:22px;border-radius:50%;background:#0ca30c;color:#fff;font-size:13px;display:grid;place-items:center;box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+.tile.skipped img{opacity:.25}
+.tile.skipped::before{content:'✕';position:absolute;left:6px;top:6px;z-index:1;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.7);color:var(--ink-2);font-size:12px;display:grid;place-items:center}
+.pill{font-size:12px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.1);color:var(--ink-2)}
+.pill.keep{background:#0ca30c;color:#fff}
+.tile .ppl{position:absolute;left:6px;bottom:6px;display:flex;align-items:center;gap:3px;font-size:11px;background:rgba(0,0,0,.6);border-radius:4px;padding:1px 5px 1px 3px}
+.tile .ppl svg{width:12px;height:12px;fill:currentColor}
+#tags{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+.tag{display:flex;align-items:center;gap:5px;font-size:12px;padding:2px 8px 2px 2px;border-radius:99px;background:rgba(255,255,255,.1);color:var(--ink);cursor:pointer;border:0;white-space:nowrap}
+.tag:hover{background:rgba(255,255,255,.2)}
+.tag img{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}
+.tag.unnamed{color:var(--ink-2)}
+.tag .initial{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:11px;font-weight:600}
+.tag .x{margin-left:2px;padding:0 2px;color:var(--muted);font-size:13px;line-height:1}
+.tag .x:hover{color:var(--ink)}
+#addTag{font-size:12px;padding:3px 9px;background:rgba(255,255,255,.08);border-color:transparent}
+#tagForm{display:flex}
+#tagForm[hidden]{display:none}
+#tagInput{width:160px;font:inherit;font-size:12px;color:var(--ink);background:var(--panel);border:1px solid var(--accent);border-radius:99px;padding:3px 10px;outline:none}
+.card .initial{width:112px;height:112px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:36px;color:var(--ink-2);cursor:pointer}
+#facebox{position:fixed;border:2px solid #fab219;border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.35);pointer-events:none;display:none;z-index:3;transition:all .08s}
+#chatPane{position:fixed;inset:0;z-index:8;display:none;background:var(--bg)}
+#chatPane.open{display:block}
+#chatPane iframe{border:0;width:100%;height:100%;display:block}
+#people{position:absolute;inset:var(--hdr,52px) 0 0 0;overflow-y:auto;background:var(--bg);display:none;z-index:3;padding:16px}
+#people.open{display:block}
+#people .bar{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+#people .bar h2{font-size:16px;margin:0}#people .bar span{color:var(--muted);font-size:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+.card{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.card img{width:112px;height:112px;border-radius:50%;object-fit:cover;cursor:pointer;background:var(--panel);transition:transform .1s}
+.card img:hover{transform:scale(1.04)}
+.card input{width:100%;font:inherit;font-size:13px;text-align:center;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 4px}
+.card input:hover{border-color:var(--line)}.card input:focus{border-color:var(--accent);outline:none;background:var(--panel)}
+.card input::placeholder{color:var(--muted)}
+.card .n{font-size:11px;color:var(--muted)}
+.card .hide{font-size:11px;padding:1px 8px;color:var(--muted);background:none;border-color:transparent}
+.card .hide:hover{color:var(--ink);border-color:var(--line)}
+.empty{padding:48px 0;color:var(--muted);text-align:center}
+.tile.noimg::after{content:attr(data-k);position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px}
+
+#viewer{position:fixed;inset:0;background:#000;display:none;z-index:5}
+#viewer.open{display:block}
+#backdrop{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(40px) brightness(.35);transform:scale(1.1)}
+#stage{position:absolute;inset:64px 16px 16px}
+/* Fill the stage box and letterbox inside it, so any shape fits the screen whole */
+#stage img,#stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+#meta{position:absolute;top:0;left:0;right:0;height:64px;display:flex;align-items:center;gap:12px;padding:0 20px;
+  background:linear-gradient(rgba(0,0,0,.6),transparent);z-index:2}
+#meta .who{font-weight:600;font-size:16px}#meta .when{color:var(--ink-2)}
+#meta .pos{margin-left:auto;color:var(--muted);font-size:12px;text-align:right}
+#meta button{background:rgba(255,255,255,.08);border-color:transparent}
+.nav{position:absolute;top:64px;bottom:0;width:30%;cursor:pointer;z-index:1}
+.nav.prev{left:0}.nav.next{right:0}
+#viewer.video .nav{bottom:80px}
+</style></head>
+<body>
+<header>
+  <a id="homeBtn" href="./" title="Home" hidden>⌂ Home</a>
+  <h1>Signal photos</h1>
+  <select id="chat" aria-label="Chat"></select>
+  <div class="seg"><button id="vGrid" class="on">Grid</button><button id="vOne">Viewer</button></div>
+  <div class="seg" id="type" title="Show (T)"><button data-t="all">All</button><button data-t="photo">Photos</button><button data-t="video">Videos</button><button data-t="shot" id="shotBtn">Screenshots</button></div>
+  <input id="q" type="search" placeholder="Search all chats…" aria-label="Search photos" hidden>
+  <button id="peopleBtn" title="People (P)" hidden>People</button>
+  <div class="seg" id="review" title="Review" hidden><button data-r="all">All</button><button data-r="todo">To review</button><button data-r="keep">Kept</button><button data-r="skip">Skipped</button></div>
+  <button id="exportBtn" title="Import kept photos into Apple Photos" hidden>Send to Photos</button>
+  <button id="sort" title="Sort order (S)">Newest first</button>
+  <span class="count" id="count"></span>
+  <span class="keys"><kbd>←</kbd><kbd>→</kbd> browse · <kbd>Enter</kbd> open · <kbd>Esc</kbd> grid · <kbd>[</kbd><kbd>]</kbd> chat · <kbd>T</kbd> type · <kbd>/</kbd> search · <kbd>K</kbd> keep <kbd>X</kbd> skip · <kbd>C</kbd> chat · <kbd>A</kbd> tag</span>
+</header>
+<div id="grid"><div id="spacer"></div></div>
+<div id="chatPane"></div>
+<div id="people"><div class="bar"><h2>People</h2><span id="peopleNote"></span></div><div class="cards" id="cards"></div></div>
+<div id="viewer">
+  <div id="backdrop"></div>
+  <div id="meta"><button id="back" title="Back to grid (Esc)">← Grid</button><span class="who" id="who"></span><span class="when" id="when"></span><span id="tags"></span><button id="addTag" title="Tag someone in this photo (A)" hidden>+ Tag</button><form id="tagForm" hidden><input id="tagInput" list="tagNames" placeholder="Who is this?" autocomplete="off" aria-label="Person's name"></form><datalist id="tagNames"></datalist><span class="pill" id="pick" hidden></span><button id="ctxBtn" title="Show in chat (C)" hidden>Show in chat</button><span class="pos" id="pos"></span></div>
+  <div class="nav prev" id="navPrev"></div><div class="nav next" id="navNext"></div>
+  <div id="stage"></div>
+  <div id="facebox"></div>
+</div>
+<script>
+const D = /*DATA*/null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ----- saved state (per browser; safe if storage is unavailable) -----
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem('signal-viewer') || '{}'); } catch { return {}; } },
+  set(v) { try { localStorage.setItem('signal-viewer', JSON.stringify(v)); } catch {} },
+};
+const saved = store.get();
+const TYPES = D.hasLabels ? ['all', 'photo', 'video', 'shot'] : ['all', 'photo', 'video'];
+if (!D.hasLabels) $('shotBtn').remove();
+const REVIEWS = ['all', 'todo', 'keep', 'skip'];
+const state = { chat: 0, newest: saved.newest ?? true, type: TYPES.includes(saved.type) ? saved.type : 'all', review: 'all', cur: 0, view: 'grid', pos: saved.pos || {} };
+const picks = new Map(); // thumb hash -> 'keep' | 'skip', from the server
+let server = false;      // true when opened through serve.mjs
+const found = D.chats.findIndex(c => c.name === saved.chat);
+if (found >= 0) state.chat = found;
+// Positions are saved as the item itself, so they survive sort and type changes
+const save = () => {
+  if (order.length && !searchChat) state.pos[chat().name] = order[state.cur];
+  store.set({ chat: D.chats[state.chat].name, newest: state.newest, type: state.type, pos: state.pos });
+};
+
+let searchChat = null; // set while showing search results, which act like one more chat
+const chat = () => searchChat ?? D.chats[state.chat];
+// Items in display order
+let order = [];
+// it[6] marks screenshots; "Photos" leaves them out
+const matchesType = it => state.type === 'all' || (state.type === 'video' ? it[2] === 'v' : state.type === 'shot' ? it[6] === 1 : it[2] !== 'v' && it[6] !== 1);
+const matchesReview = it => state.review === 'all' || (state.review === 'todo' ? !picks.has(it[1]) : picks.get(it[1]) === state.review);
+const matches = it => matchesType(it) && matchesReview(it);
+function buildOrder() {
+  const items = chat().items;
+  order = [];
+  for (let i = 0; i < items.length; i++) if (matches(items[i])) order.push(i);
+  if (state.newest && !chat().flat) order.reverse(); // search results stay in relevance order
+}
+// Display position of an item, or the nearest one shown if it's filtered out
+function positionOf(itemIndex) {
+  if (!order.length) return 0;
+  let best = 0;
+  for (let k = 0; k < order.length; k++) if (Math.abs(order[k] - itemIndex) < Math.abs(order[best] - itemIndex)) best = k;
+  return best;
+}
+const typeLabel = () => ({ all: 'photos & videos', photo: 'photos', video: 'videos', shot: 'screenshots' })[state.type];
+const countText = () => order.length.toLocaleString() + ' ' + (searchChat?.person ? typeLabel() + ' of ' + searchChat.person : searchChat?.flat ? 'results' : typeLabel());
+const item = i => chat().items[order[i]];
+const thumbUrl = it => (it[1] ? D.thumbBase + '/' + it[1] + '.webp' : '');
+const fullUrl = it => (it[5] ? D.thumbBase + '/display/' + it[1] + '.jpg' : chat().base + '/' + it[0]);
+const fmtDate = t => new Date(t).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+const monthKey = t => { const d = new Date(t); return d.getFullYear() * 12 + d.getMonth(); };
+const monthLabel = t => new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+// ----- chat picker -----
+$('chat').innerHTML = '<option value="virtual" id="virtualOpt" hidden></option><option value="all">All chats</option>' + D.chats.map((c, i) => '<option value="' + i + '">' + esc(c.name) + ' (' + c.items.length.toLocaleString() + ')</option>').join('');
+function selectChat(i) {
+  searchChat = null; $('q').value = '';
+  state.chat = (i + D.chats.length) % D.chats.length;
+  $('chat').value = state.chat;
+  buildOrder();
+  const savedItem = state.pos[chat().name];
+  state.cur = savedItem == null ? 0 : positionOf(savedItem);
+  $('count').textContent = countText();
+  layout(true);
+  if (state.view === 'one') show(state.cur); else scrollToCur(true);
+  save();
+}
+$('chat').onchange = () => {
+  const v = $('chat').value;
+  if (v === 'all') { togglePeople(false); showAll(); }
+  else if (v !== 'virtual') { togglePeople(false); selectChat(Number(v)); }
+  $('chat').blur();
+};
+
+// ----- grid (virtualised: only rows near the viewport exist) -----
+const grid = $('grid'), spacer = $('spacer');
+let rows = [], cols = 4, tile = 160, rendered = '';
+const GAP = 2, HEAD = 44;
+function layout(force) {
+  const w = spacer.clientWidth || grid.clientWidth - 32;
+  const target = innerWidth < 600 ? 110 : 170;
+  const newCols = Math.max(3, Math.floor((w + GAP) / (target + GAP)));
+  if (!force && newCols === cols && rows.length) { tile = (w - GAP * (cols - 1)) / cols; positionRows(); return; }
+  cols = newCols;
+  tile = (w - GAP * (cols - 1)) / cols;
+  // Rows: a month heading, then that month's items in rows of `cols`.
+  // Search results are one block in relevance order under a single heading.
+  rows = [];
+  let i = 0;
+  if (chat().flat && order.length) {
+    rows.push({ type: 'month', label: chat().query, n: order.length });
+    for (let k = 0; k < order.length; k += cols) rows.push({ type: 'items', start: k, end: Math.min(k + cols, order.length) });
+    i = order.length;
+  }
+  while (i < order.length) {
+    const key = monthKey(item(i)[4]);
+    let j = i;
+    while (j < order.length && monthKey(item(j)[4]) === key) j++;
+    rows.push({ type: 'month', label: monthLabel(item(i)[4]), n: j - i });
+    for (let k = i; k < j; k += cols) rows.push({ type: 'items', start: k, end: Math.min(k + cols, j) });
+    i = j;
+  }
+  positionRows();
+}
+function positionRows() {
+  let y = 0;
+  for (const r of rows) { r.top = y; r.h = r.type === 'month' ? HEAD : tile + GAP; y += r.h; }
+  spacer.style.height = y + 'px';
+  rendered = '';
+  paint();
+}
+function rowOf(index) {
+  let lo = 0, hi = rows.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; const r = rows[mid]; if (r.type === 'items' ? r.start <= index : (rows[mid + 1]?.start ?? Infinity) <= index) lo = mid; else hi = mid - 1; }
+  while (rows[lo] && rows[lo].type !== 'items') lo++;
+  return lo;
+}
+function firstRowAt(y) {
+  let lo = 0, hi = rows.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (rows[mid].top <= y) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function paint() {
+  if (state.view !== 'grid') return;
+  if (!rows.length) { spacer.innerHTML = '<div class="empty">No ' + typeLabel() + (searchChat ? ' match this search.' : ' in this chat.') + '</div>'; spacer.style.height = 'auto'; return; }
+  const top = grid.scrollTop, h = grid.clientHeight;
+  const a = firstRowAt(Math.max(0, top - h)), b = firstRowAt(top + 2 * h);
+  const key = a + ':' + b + ':' + state.cur + ':' + tile + ':' + pickVersion + ':' + tagVersion;
+  if (key === rendered) return;
+  rendered = key;
+  let html = '';
+  for (let r = a; r <= b; r++) {
+    const row = rows[r];
+    if (row.type === 'month') { html += '<div class="month" style="top:' + row.top + 'px;height:' + HEAD + 'px">' + esc(row.label) + '<span>' + row.n + '</span></div>'; continue; }
+    html += '<div class="row" style="top:' + row.top + 'px;height:' + tile + 'px">';
+    for (let i = row.start; i < row.end; i++) {
+      const it = item(i), t = thumbUrl(it);
+      const pk = picks.get(it[1]);
+      html += '<div class="tile' + (i === state.cur ? ' sel' : '') + (t ? '' : ' noimg') + (pk === 'keep' ? ' kept' : pk === 'skip' ? ' skipped' : '') + '" data-i="' + i + '" data-k="' + (it[2] === 'v' ? 'video' : 'photo') + '" style="width:' + tile + 'px;height:' + tile + 'px">' +
+        (t ? '<img src="' + t + '" decoding="async" alt="">' : '') + (it[2] === 'v' ? '<span class="badge">▶</span>' : it[2] === 'g' ? '<span class="badge">GIF</span>' : '') +
+        (tagMap.has(it[1]) ? '<span class="ppl" title="' + esc(tagNames(it[1])) + '">' + PERSON_ICON + tagMap.get(it[1]).length + '</span>' : '') + '</div>';
+    }
+    html += '</div>';
+  }
+  spacer.innerHTML = html;
+}
+let raf = 0;
+grid.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(paint); }, { passive: true });
+// The header can wrap onto two lines; keep the grid just below it
+const fitHeader = () => document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px');
+new ResizeObserver(fitHeader).observe(document.querySelector('header'));
+addEventListener('resize', () => { layout(false); if (state.view === 'one') show(state.cur); });
+spacer.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) { state.cur = Number(t.dataset.i); openViewer(); } });
+function scrollToCur(center) {
+  const r = rows[rowOf(state.cur)];
+  if (!r) return;
+  const top = grid.scrollTop, h = grid.clientHeight;
+  if (center) grid.scrollTop = Math.max(0, r.top - h / 2 + r.h / 2);
+  else if (r.top < top + HEAD) grid.scrollTop = r.top - HEAD;
+  else if (r.top + r.h > top + h) grid.scrollTop = r.top + r.h - h;
+  rendered = ''; paint();
+}
+
+// ----- single viewer -----
+const viewer = $('viewer'), stage = $('stage');
+const cache = new Map(); // url -> Image, keeps neighbours decoded
+function preload(i) {
+  if (i < 0 || i >= order.length) return;
+  const it = item(i);
+  if (it[2] === 'v') return;
+  const url = fullUrl(it);
+  if (cache.has(url)) return;
+  const img = new Image(); img.decoding = 'async'; img.src = url;
+  cache.set(url, img);
+  if (cache.size > 24) cache.delete(cache.keys().next().value);
+}
+let showToken = 0;
+function show(i) {
+  if (!order.length) return closeViewer();
+  state.cur = Math.max(0, Math.min(order.length - 1, i));
+  const it = item(state.cur);
+  $('who').textContent = chat().senders[it[3]];
+  $('when').textContent = fmtDate(it[4]);
+  $('pos').innerHTML = esc(it[7] != null ? chat().names[it[7]] : chat().name) + '<br>' + (state.cur + 1).toLocaleString() + ' / ' + order.length.toLocaleString();
+  showPick(it);
+  renderTags(it);
+  const t = thumbUrl(it);
+  $('backdrop').style.backgroundImage = t ? 'url("' + t + '")' : 'none';
+  const old = stage.querySelector('video'); if (old) old.pause();
+  viewer.classList.toggle('video', it[2] === 'v');
+  if (it[2] === 'v') {
+    ++showToken;
+    stage.innerHTML = '<video src="' + chat().base + '/' + it[0] + '" controls autoplay playsinline' + (t ? ' poster="' + t + '"' : '') + '></video>';
+  } else {
+    const url = fullUrl(it);
+    const img = cache.get(url) || new Image();
+    if (!img.src) img.src = url;
+    img.alt = '';
+    // Keep the previous photo up until this one is decoded, so arrowing never flashes black
+    const token = ++showToken;
+    const swap = () => { if (token === showToken && stage.firstChild !== img) stage.replaceChildren(img); };
+    if (img.complete && img.naturalWidth) swap();
+    else {
+      if (stage.querySelector('video')) stage.replaceChildren();
+      const t = setTimeout(swap, 300);
+      img.decode().catch(() => {}).finally(() => { clearTimeout(t); swap(); });
+    }
+  }
+  for (const d of [1, 2, 3, 4, 5, -1, -2]) preload(state.cur + d);
+  save();
+}
+function setType(t) {
+  const keep = order.length ? order[state.cur] : 0;
+  state.type = t;
+  for (const b of $('type').children) b.classList.toggle('on', b.dataset.t === t);
+  buildOrder();
+  state.cur = positionOf(keep);
+  $('count').textContent = countText();
+  layout(true);
+  if (state.view === 'one') show(state.cur); else scrollToCur(true);
+  save();
+}
+$('type').onclick = e => { const b = e.target.closest('button'); if (b) { setType(b.dataset.t); b.blur(); } };
+// Where the open photo came from, so Esc / Back returns there: the grid, a chat, or another page
+let origin = 'grid';
+const BACK_LABEL = { grid: '← Grid', chat: '← Chat', page: '← Back' };
+function openViewer(from = 'grid') {
+  if (!order.length) return;
+  origin = from;
+  $('back').textContent = BACK_LABEL[origin];
+  state.view = 'one'; viewer.classList.add('open'); $('vOne').classList.add('on'); $('vGrid').classList.remove('on'); show(state.cur);
+}
+function closeViewer() {
+  const v = stage.querySelector('video'); if (v) v.pause();
+  stage.replaceChildren();
+  $('facebox').style.display = 'none';
+  state.view = 'grid'; viewer.classList.remove('open'); $('vGrid').classList.add('on'); $('vOne').classList.remove('on');
+  scrollToCur(true);
+}
+function goBack() {
+  const from = origin;
+  origin = 'grid';
+  if (from === 'page' && history.length > 1 && document.referrer.startsWith(location.origin)) return history.back();
+  closeViewer();
+  if (from === 'chat') $('chatPane').classList.add('open');
+}
+$('back').onclick = goBack;
+$('navPrev').onclick = () => show(state.cur - 1);
+$('navNext').onclick = () => show(state.cur + 1);
+$('vGrid').onclick = () => state.view === 'one' && closeViewer();
+$('vOne').onclick = () => state.view === 'grid' && openViewer();
+$('sort').onclick = () => toggleSort();
+function toggleSort() {
+  const keep = order[state.cur];
+  state.newest = !state.newest;
+  $('sort').textContent = state.newest ? 'Newest first' : 'Oldest first';
+  buildOrder();
+  state.cur = keep == null ? 0 : positionOf(keep);
+  layout(true);
+  if (state.view === 'one') show(state.cur); else scrollToCur(true);
+  save();
+}
+// Swipe on touch screens
+let sx = null;
+viewer.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') sx = e.clientX; });
+viewer.addEventListener('pointerup', e => { if (sx != null && Math.abs(e.clientX - sx) > 50) show(state.cur + (e.clientX < sx ? 1 : -1)); sx = null; });
+
+// ----- keyboard -----
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === '/' && !$('q').hidden) { $('q').focus(); $('q').select(); return e.preventDefault(); }
+  if (k === '[' || k === ']') { selectChat(state.chat + (k === ']' ? 1 : -1)); return e.preventDefault(); }
+  if (k === 's' || k === 'S') return toggleSort();
+  if (k === 't' || k === 'T') return setType(TYPES[(TYPES.indexOf(state.type) + 1) % TYPES.length]);
+  if ((k === 'p' || k === 'P') && server) return togglePeople();
+  if ((k === 'c' || k === 'C') && server && order.length) return showInChat();
+  if ((k === 'a' || k === 'A') && state.view === 'one') { startTag(); return e.preventDefault(); }
+  if (k === 'Escape' && $('chatPane').classList.contains('open')) return closeChat();
+  if (k === 'Escape' && $('people').classList.contains('open')) return togglePeople(false);
+  if (server && order.length && 'kKxXuU'.includes(k) && k.length === 1) {
+    const value = { k: 'keep', x: 'skip', u: null }[k.toLowerCase()];
+    const it = item(state.cur);
+    setPick(it[1], picks.get(it[1]) === value ? null : value); // pressing again undoes
+    // Move on to the next one after deciding, for fast triage
+    if (value && state.cur < order.length - 1) { if (state.view === 'one') show(state.cur + 1); else { state.cur++; scrollToCur(false); } }
+    return e.preventDefault();
+  }
+  if (state.view === 'one') {
+    if (k === 'ArrowRight') show(state.cur + 1);
+    else if (k === 'ArrowLeft') show(state.cur - 1);
+    else if (k === 'Home') show(0);
+    else if (k === 'End') show(order.length - 1);
+    else if (k === 'Escape') goBack();
+    else if (k === 'g' || k === 'G') closeViewer();
+    else if (k === ' ') { const v = stage.querySelector('video'); if (!v) return; v.paused ? v.play() : v.pause(); }
+    else return;
+    return e.preventDefault();
+  }
+  const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[k];
+  if (move) { state.cur = Math.max(0, Math.min(order.length - 1, state.cur + move)); scrollToCur(false); save(); return e.preventDefault(); }
+  if (k === 'Enter' || k === ' ') { openViewer(); return e.preventDefault(); }
+  if (k === 'Home') { state.cur = 0; scrollToCur(true); return e.preventDefault(); }
+  if (k === 'End') { state.cur = order.length - 1; scrollToCur(true); return e.preventDefault(); }
+});
+
+$('sort').textContent = state.newest ? 'Newest first' : 'Oldest first';
+for (const b of $('type').children) b.classList.toggle('on', b.dataset.t === state.type);
+
+// ----- search (only when opened through serve.mjs, which embeds the query with CLIP) -----
+const where = new Map(); // thumb hash -> [chat index, item index]
+D.chats.forEach((c, ci) => c.items.forEach((it, ii) => { if (it[1] && !where.has(it[1])) where.set(it[1], [ci, ii]); }));
+// Search results and a person's photos act like one more chat, built from hashes
+function showVirtual(hashes, opts) {
+  const senders = [], names = [], sIdx = new Map(), nIdx = new Map();
+  const idx = (list, map, v) => { if (!map.has(v)) { map.set(v, list.length); list.push(v); } return map.get(v); };
+  const items = [];
+  for (const h of hashes) {
+    const w = where.get(h);
+    if (!w) continue;
+    const c = D.chats[w[0]], it = c.items[w[1]];
+    const folder = c.base.slice(D.archiveBase.length + 1);
+    items.push([folder + '/' + it[0], it[1], it[2], idx(senders, sIdx, c.senders[it[3]]), it[4], it[5], it[6], idx(names, nIdx, c.name)]);
+  }
+  if (!opts.flat) items.sort((x, y) => x[4] - y[4]); // date order, grouped by month
+  searchChat = { name: opts.name, query: opts.query, person: opts.person, base: D.archiveBase, senders, names, items, flat: !!opts.flat };
+  $('virtualOpt').textContent = '— ' + opts.name + ' —';
+  $('chat').value = opts.selectValue ?? 'virtual';
+  buildOrder();
+  state.cur = 0;
+  $('count').textContent = countText();
+  grid.scrollTop = 0;
+  layout(true);
+  if (state.view === 'one') show(0);
+}
+// Every photo and video from every chat, newest first, grouped by month
+function showAll() {
+  const hashes = new Set();
+  for (const c of D.chats) for (const it of c.items) if (it[1]) hashes.add(it[1]);
+  showVirtual([...hashes], { name: 'All chats', selectValue: 'all' });
+}
+let searchToken = 0;
+async function runSearch(q) {
+  const token = ++searchToken;
+  $('count').textContent = 'Searching…';
+  const r = await fetch('api/search?q=' + encodeURIComponent(q)).then(res => res.json());
+  if (token !== searchToken) return; // a newer search started
+  togglePeople(false);
+  showVirtual(r.hashes, { name: 'Search: ' + q, query: '“' + q + '”', flat: true });
+}
+
+// ----- keep / skip -----
+let pickVersion = 0, pending = {}, flushTimer = 0;
+const post = (path, body) => fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Signal-Viewer': '1' }, body: JSON.stringify(body) })
+  .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || j.output || r.statusText); return j; }));
+function setPick(hash, value) {
+  if (!hash) return;
+  if (value) picks.set(hash, value); else picks.delete(hash);
+  pending[hash] = value;
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => { const batch = pending; pending = {}; post('api/picks', { picks: batch }).catch(err => alert('Could not save picks: ' + err.message)); }, 300);
+  pickVersion++; rendered = ''; paint();
+  if (state.view === 'one') showPick(item(state.cur));
+  updateReviewCounts();
+}
+// Don't lose the last few picks if the tab closes before the save timer fires
+addEventListener('pagehide', () => {
+  if (!Object.keys(pending).length) return;
+  fetch('api/picks', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-Signal-Viewer': '1' }, body: JSON.stringify({ picks: pending }) });
+  pending = {};
+});
+function showPick(it) {
+  const v = picks.get(it[1]);
+  $('pick').hidden = !server;
+  $('pick').className = 'pill' + (v === 'keep' ? ' keep' : '');
+  $('pick').textContent = v === 'keep' ? '✓ Kept' : v === 'skip' ? 'Skipped' : 'K keep · X skip';
+}
+function setReview(r) {
+  const keep = order.length ? order[state.cur] : 0;
+  state.review = r;
+  for (const b of $('review').children) b.classList.toggle('on', b.dataset.r === r);
+  buildOrder();
+  state.cur = positionOf(keep);
+  $('count').textContent = countText();
+  layout(true);
+  if (state.view === 'one') show(state.cur); else scrollToCur(true);
+}
+$('review').onclick = e => { const b = e.target.closest('button'); if (b) { setReview(b.dataset.r); b.blur(); } };
+function updateReviewCounts() {
+  let k = 0, x = 0;
+  for (const v of picks.values()) v === 'keep' ? k++ : x++;
+  $('review').querySelector('[data-r=keep]').textContent = 'Kept' + (k ? ' ' + k.toLocaleString() : '');
+  $('review').querySelector('[data-r=skip]').textContent = 'Skipped' + (x ? ' ' + x.toLocaleString() : '');
+}
+
+// ----- send kept photos to Apple Photos -----
+$('exportBtn').onclick = async () => {
+  const kept = [...picks.values()].filter(v => v === 'keep').length;
+  if (!kept) return alert('Nothing kept yet. Press K on photos you want to keep.');
+  if (!confirm('Import kept photos into Apple Photos (album "From Signal")? Ones already sent are skipped.')) return;
+  clearTimeout(flushTimer);
+  if (Object.keys(pending).length) { const batch = pending; pending = {}; await post('api/picks', { picks: batch }); }
+  $('exportBtn').disabled = true; $('exportBtn').textContent = 'Sending…';
+  try { const r = await post('api/export', {}); alert(r.output); }
+  catch (err) { alert('Could not send to Photos: ' + err.message); }
+  finally { $('exportBtn').disabled = false; $('exportBtn').textContent = 'Send to Photos'; }
+};
+
+// ----- who is in each photo (face groups from people.mjs) -----
+const PERSON_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
+let tagPeople = [], tagMap = new Map(), tagVersion = 0;
+async function loadTags() {
+  const r = await fetch('api/tags').then(res => res.json());
+  tagPeople = r.people;
+  tagMap = new Map(Object.entries(r.tags));
+  tagVersion++; rendered = ''; paint();
+  if (state.view === 'one' && order.length) renderTags(item(state.cur));
+}
+const personName = pi => tagPeople[pi]?.name || 'Unnamed';
+const tagNames = hash => (tagMap.get(hash) || []).map(t => personName(t[0])).join(', ');
+function renderTags(it) {
+  const list = tagMap.get(it[1]) || [];
+  $('tags').innerHTML = list.map((t, n) =>
+    '<button class="tag' + (tagPeople[t[0]]?.name ? '' : ' unnamed') + '" data-n="' + n + '" title="Show all of ' + esc(personName(t[0])) + (t[1] ? '' : ' (tagged by hand)') + '">' +
+    (t[1] ? '<img src="' + D.archiveBase + '/.faces/crops/' + t[1] + '.webp" alt="">' : '<span class="initial">' + esc(personName(t[0])[0]) + '</span>') +
+    esc(personName(t[0])) + (server ? '<span class="x" title="Not ' + esc(personName(t[0])) + '" data-remove="1">×</span>' : '') + '</button>').join('');
+  $('facebox').style.display = 'none';
+  $('tagForm').hidden = true;
+}
+// Hovering a tag outlines that face on the photo (photos only; video frames move)
+function faceRect(box) {
+  const img = stage.querySelector('img');
+  if (!img || !img.naturalWidth || !box) return null;
+  const r = stage.getBoundingClientRect();
+  const scale = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+  const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+  const x0 = r.left + (r.width - w) / 2, y0 = r.top + (r.height - h) / 2;
+  const pad = 0.15; // a little room around the detected face
+  return { left: x0 + (box[0] - box[2] * pad) * w, top: y0 + (box[1] - box[3] * pad) * h, width: box[2] * (1 + 2 * pad) * w, height: box[3] * (1 + 2 * pad) * h };
+}
+$('tags').addEventListener('mouseover', e => {
+  const b = e.target.closest('.tag'); if (!b) return;
+  const t = (tagMap.get(item(state.cur)[1]) || [])[Number(b.dataset.n)];
+  const rect = t && faceRect(t[2]);
+  const fb = $('facebox');
+  if (!rect) { fb.style.display = 'none'; return; }
+  Object.assign(fb.style, { display: 'block', left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px', height: rect.height + 'px' });
+});
+$('tags').addEventListener('mouseout', e => { if (!e.relatedTarget?.closest?.('.tag')) $('facebox').style.display = 'none'; });
+$('tags').addEventListener('click', async e => {
+  const b = e.target.closest('.tag'); if (!b) return;
+  const hash = item(state.cur)[1];
+  const t = (tagMap.get(hash) || [])[Number(b.dataset.n)];
+  if (e.target.dataset.remove) {
+    await post('api/people/untag', { hash, key: tagPeople[t[0]].key, faceId: t[1] });
+    return loadTags();
+  }
+  const hashes = [...tagMap].filter(([, list]) => list.some(x => x[0] === t[0])).map(([h]) => h);
+  closeViewer();
+  showVirtual(hashes, { name: personName(t[0]), person: tagPeople[t[0]]?.name || 'this person' });
+});
+
+// Tag by hand: pick an existing name or type a new one
+function startTag() {
+  if (!server || state.view !== 'one' || !order.length) return;
+  $('tagNames').innerHTML = [...new Set(tagPeople.filter(p => p.name).map(p => p.name))].sort().map(n => '<option value="' + esc(n) + '">').join('');
+  $('tagForm').hidden = false;
+  $('tagInput').value = '';
+  $('tagInput').focus();
+}
+$('addTag').onclick = startTag;
+$('tagForm').onsubmit = async e => {
+  e.preventDefault();
+  const name = $('tagInput').value.trim();
+  if (!name) return;
+  $('tagForm').hidden = true;
+  await post('api/people/tag', { hash: item(state.cur)[1], name });
+  await loadTags();
+};
+$('tagInput').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); $('tagForm').hidden = true; } });
+$('tagInput').addEventListener('blur', () => setTimeout(() => { $('tagForm').hidden = true; }, 150));
+
+// ----- show in chat: the conversation around this photo, in chat.html -----
+function showInChat() {
+  const it = item(state.cur);
+  const chatName = it[7] != null ? chat().names[it[7]] : chat().name;
+  const pane = $('chatPane');
+  let frame = pane.querySelector('iframe');
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.src = 'chat.html?embed=1&hash=' + it[1] + '&chatName=' + encodeURIComponent(chatName);
+    pane.appendChild(frame);
+  } else frame.contentWindow.postMessage({ type: 'goto', hash: it[1], chat: chatName }, location.origin);
+  const v = stage.querySelector('video'); if (v) v.pause();
+  pane.classList.add('open');
+  frame.focus();
+}
+$('ctxBtn').onclick = showInChat;
+function closeChat() { $('chatPane').classList.remove('open'); }
+// Clicking a photo in the chat opens it here
+function openHash(hash, chatName, from = 'grid') {
+  closeChat();
+  let pos = order.findIndex(i => chat().items[i][1] === hash);
+  if (pos < 0) {
+    const ci = D.chats.findIndex(c => c.name === chatName);
+    if (ci >= 0) selectChat(ci);
+    pos = order.findIndex(i => chat().items[i][1] === hash);
+    if (pos < 0 && state.type !== 'all') { setType('all'); pos = order.findIndex(i => chat().items[i][1] === hash); }
+  }
+  if (pos < 0) return;
+  state.cur = pos;
+  openViewer(from);
+}
+addEventListener('message', e => {
+  if (e.origin !== location.origin) return;
+  if (e.data?.type === 'close') closeChat();
+  if (e.data?.type === 'open') openHash(e.data.hash, e.data.chat, 'chat');
+});
+
+// ----- people -----
+let peopleList = [];
+async function loadPeople() {
+  peopleList = (await fetch('api/people').then(r => r.json())).people;
+  renderPeople();
+}
+// "12 photos · 3 videos" for a person's media
+function countKinds(hashes) {
+  let photos = 0, videos = 0;
+  for (const h of hashes) {
+    const w = where.get(h);
+    if (!w) continue;
+    if (D.chats[w[0]].items[w[1]][2] === 'v') videos++; else photos++;
+  }
+  const part = (n, word) => n.toLocaleString() + ' ' + word + (n === 1 ? '' : 's');
+  return [photos || !videos ? part(photos, 'photo') : '', videos ? part(videos, 'video') : ''].filter(Boolean).join(' · ');
+}
+function renderPeople() {
+  const named = peopleList.filter(p => p.name).length;
+  $('peopleNote').textContent = peopleList.length
+    ? named + ' named · ' + (peopleList.length - named) + ' to name. Type a name to save it; type an existing name to merge.'
+    : 'No faces found yet: run npm run faces, then npm run people.';
+  $('cards').innerHTML = peopleList.map((p, i) =>
+    '<div class="card" data-i="' + i + '">' + (p.cover ? '<img src="' + D.archiveBase + '/.faces/crops/' + p.cover + '.webp" alt="" title="Show their photos">' : '<span class="initial" title="Show their photos">' + esc((p.name || '?')[0]) + '</span>') +
+    '<input value="' + esc(p.name || '') + '" placeholder="Add a name" aria-label="Name">' +
+    '<span class="n">' + countKinds(p.photos) + '</span>' +
+    (p.name ? '' : '<button class="hide" title="Not someone you want to track">Hide</button>') + '</div>').join('');
+}
+$('cards').addEventListener('click', async e => {
+  const card = e.target.closest('.card'); if (!card) return;
+  const p = peopleList[Number(card.dataset.i)];
+  if (e.target.tagName === 'IMG' || e.target.classList.contains('initial')) {
+    togglePeople(false);
+    showVirtual(p.photos, { name: p.name || 'Unnamed person', person: p.name || 'this person' });
+  } else if (e.target.classList.contains('hide')) {
+    await post('api/people/hide', { key: p.key });
+    peopleList.splice(peopleList.indexOf(p), 1);
+    renderPeople();
+    loadTags();
+  }
+});
+$('cards').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur(); });
+$('cards').addEventListener('focusout', async e => {
+  if (e.target.tagName !== 'INPUT') return;
+  const p = peopleList[Number(e.target.closest('.card').dataset.i)];
+  const name = e.target.value.trim();
+  if (!name || name === p.name) { e.target.value = p.name || ''; return; }
+  const r = await post('api/people/name', { key: p.key, name });
+  await loadPeople();
+  loadTags();
+  if (r.merged) $('peopleNote').textContent = 'Merged into ' + name + '.';
+});
+function togglePeople(open = !$('people').classList.contains('open')) {
+  $('people').classList.toggle('open', open);
+  $('peopleBtn').classList.toggle('on', open);
+  if (open) { if (state.view === 'one') closeViewer(); loadPeople(); }
+}
+$('peopleBtn').onclick = () => togglePeople();
+
+$('q').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && $('q').value.trim()) { runSearch($('q').value.trim()); $('q').blur(); }
+  if (e.key === 'Escape') { $('q').blur(); if (searchChat) selectChat(state.chat); }
+});
+$('q').addEventListener('search', () => { if (!$('q').value && searchChat) selectChat(state.chat); }); // the ✕ in the box
+if (location.protocol.startsWith('http')) {
+  fetch('api/picks').then(r => (r.ok ? r.json() : null)).then(j => {
+    if (!j || !j.picks) return;
+    server = true;
+    for (const [h, v] of Object.entries(j.picks)) picks.set(h, v);
+    for (const id of ['peopleBtn', 'review', 'exportBtn', 'ctxBtn', 'homeBtn', 'addTag']) $(id).hidden = false;
+    fetch('api/search?q=').then(r => { if (r.ok) $('q').hidden = false; }).catch(() => {}); // only once `npm run clip` has run
+    for (const b of $('review').children) b.classList.toggle('on', b.dataset.r === state.review);
+    updateReviewCounts();
+    pickVersion++; rendered = ''; paint();
+    if (state.view === 'one' && order.length) showPick(item(state.cur)); // a photo opened from a link before the server answered
+    loadTags().catch(() => {});
+    // Links from the home page: ?q= search, ?people=1, ?review=todo|keep|skip
+    if (REVIEWS.includes(link.get('review'))) setReview(link.get('review'));
+    if (link.get('q')) { if (!link.get('type')) setType('all'); $('q').value = link.get('q'); runSearch(link.get('q')); }
+    if (link.get('people')) togglePeople(true);
+  }).catch(() => {});
+}
+
+selectChat(state.chat);
+// Links that don't need the server: ?type=photo|video|shot|all, ?hash=…&chat=… opens one photo
+const link = new URLSearchParams(location.search);
+if (link.get('all')) showAll();
+if (TYPES.includes(link.get('type'))) setType(link.get('type'));
+if (link.get('hash')) openHash(link.get('hash'), link.get('chat'), 'page');
+</script>
+</body></html>
