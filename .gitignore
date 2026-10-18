@@ -1,6 +1,7 @@
 # Your data: never commit these
 .env
 backup/
+backup.previous-*/
 archive/
 signal.duckdb
 

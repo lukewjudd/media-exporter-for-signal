@@ -127,6 +127,19 @@ npm run view
 
 It opens in your browser at `http://127.0.0.1:8777`.
 
+### Shortcuts with just or make
+
+If you use [just](https://github.com/casey/just) or make, the same tasks have shorter names. Run `just` or `make` on its own to list them.
+
+| just | make | What it does |
+|---|---|---|
+| `just setup` | `make setup` | Install everything and create `.env` |
+| `just import ~/Downloads/SignalBackups` | `make import FOLDER=~/Downloads/SignalBackups` | Move a copied backup into `backup/` (the old one goes to the Trash) |
+| `just sync` | `make sync` | Decrypt and build everything |
+| `just view` | `make view` | Open the app |
+| `just update ~/Downloads/SignalBackups` | `make update FOLDER=~/Downloads/SignalBackups` | Import a new backup, then sync |
+| `just demo` | `make demo` | Open the demo, building it first if needed |
+
 ## Using it
 
 ### Photo viewer keys
@@ -174,7 +187,7 @@ Next time you back up and sync, media you've deleted from your phone stays in th
 
 ## Updating with a new backup
 
-Make a new backup, replace the contents of `backup/` with it, and run `npm run sync` again. Only new photos and messages are processed.
+Make a new backup, replace the contents of `backup/` with it, and run `npm run sync` again (or `just update <folder>`, which does both). Only new photos and messages are processed.
 
 ## What's where
 
