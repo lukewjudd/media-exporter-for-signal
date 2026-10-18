@@ -6,6 +6,8 @@ Signal stores everything encrypted inside the app, so years of shared photos pil
 
 Everything runs locally on your Mac. Nothing is uploaded anywhere.
 
+![The photo grid, showing every chat's photos by month](docs/screenshots/photos.jpg)
+
 > **iPhone only, for now.** This reads the on-device backups that **Signal for iPhone 8.30 and later** can make. Android backups use an older, different format and aren't supported yet. Signal Desktop's local backups use the same format as the iPhone's and may work, but haven't been tested.
 >
 > This is an unofficial tool, not made by or affiliated with Signal.
@@ -22,6 +24,15 @@ Everything runs locally on your Mac. Nothing is uploaded anywhere.
 - **Triage:** press K to keep or X to skip, then send everything you kept to Apple Photos, dated correctly.
 - **A storage dashboard** showing which chats and files take up the most space on your phone.
 - **Safe to clean up afterwards:** the archive only ever grows. Media you delete from your phone stays in the archive, and the viewer still shows it.
+
+| | |
+|---|---|
+| ![A photo open with who sent it, when, and who's in it](docs/screenshots/viewer.jpg) | ![A chat shown as message bubbles](docs/screenshots/chat.jpg) |
+| **Viewer:** who sent it, when, and who's in it | **Chats:** jump from any photo to the conversation |
+| ![People grouped by face](docs/screenshots/people.jpg) | ![Screenshots kept separate from photos](docs/screenshots/screenshots.jpg) |
+| **People:** faces grouped across photos and videos | **Screenshots:** kept out of your photos |
+
+*Screenshots are from the [demo](#try-the-demo-first): made-up chats with free stock photos.*
 
 ## What you need
 
@@ -55,8 +66,6 @@ This builds a demo with seven chats, a few hundred messages, photos, screenshots
 5. Let the backup finish. You'll end up with a folder called `SignalBackups` containing a `files` folder and one or more `signal-backup-…` folders.
 
 ## 2. Copy the backup to your Mac
-
-Use whichever of these suits you.
 
 **A. AirDrop** (simplest)
 
@@ -116,7 +125,7 @@ Then open the app:
 npm run view
 ```
 
-It opens in your browser at `http://127.0.0.1:8777`. Press Ctrl+C in the terminal to stop it.
+It opens in your browser at `http://127.0.0.1:8777`.
 
 ## Using it
 
@@ -182,13 +191,6 @@ Make a new backup, replace the contents of `backup/` with it, and run `npm run s
 
 **Back up `archive/` somewhere safe**, for example with Time Machine. It's the only copy of anything you later delete from your phone. Keep your recovery key safe too: without it, `backup/` can't be decrypted.
 
-## Privacy and security
-
-- Everything runs on your Mac. The only network use is the one-time model downloads: the CLIP model from Hugging Face and the face models from GitHub.
-- The local server only accepts connections from your own Mac, and only serves the app's pages and your archive. Other websites you visit can't read your archive through it or make it save changes.
-- Your recovery key is stored in plain text in `.env` if you put it there. Leave it blank to be asked each time instead.
-- The decrypted archive is unencrypted on disk, like any other photos. FileVault (full-disk encryption) is a good idea.
-
 ## How it works
 
 - **Decryption:** the backup's `metadata` file holds the backup ID, encrypted with a key derived from your recovery key. That ID and your key unlock `main`, a compressed and encrypted stream of every chat, message and attachment record. Each attachment in `files/` is encrypted with its own key, stored in those records. Key derivation uses Signal's own [libsignal](https://github.com/signalapp/libsignal) library.
@@ -203,14 +205,9 @@ Make a new backup, replace the contents of `backup/` with it, and run `npm run s
 | "That doesn't look like a valid recovery key" | It should be 64 letters and digits. `=` and `#` are fine. |
 | "Backup MAC check failed" | The key is wrong, or the backup didn't copy completely. |
 | "N referenced but their file wasn't written" | The phone didn't finish writing some media into that backup. Make a new backup and sync again. |
-| "Face models not found" | Run `npm run setup`. |
-| No search box | Run `npm run clip` (it's part of `npm run sync`). |
-| Send to Photos fails | Allow access in **System Settings → Privacy & Security → Automation**. |
-| Port 8777 already in use | `node src/serve.mjs 8778` |
 
 ## Limitations
 
-- iPhone backups only (see the note at the top).
 - The full feature set needs macOS: CoreML, Apple's text recognition and Photos import are Mac-only.
 - Signal's backup format isn't a public, stable interface. A future Signal update could change it.
 - Disappearing messages and view-once media aren't included in Signal's backups, so they can't be archived.
